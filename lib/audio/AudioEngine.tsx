@@ -44,6 +44,8 @@ export interface AudioContextType {
   // Web Audio Visualizer API access
   getAnalyserData: (freqArray: Uint8Array, timeArray: Uint8Array) => void;
   isAudioEngineReady: boolean;
+  mediaElement: HTMLVideoElement | null;
+  isVideo: boolean;
 }
 
 const AudioContext = createContext<AudioContextType | null>(null);
@@ -64,8 +66,9 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
   const [audioError, setAudioError] = useState<string | null>(null);
   const [isAudioEngineReady, setIsAudioEngineReady] = useState<boolean>(false);
 
-  // Audio elements & Web Audio API refs
-  const audioRef = useRef<HTMLAudioElement | null>(null);
+  // Media element & Web Audio API refs
+  const [mediaElement, setMediaElement] = useState<HTMLVideoElement | null>(null);
+  const audioRef = useRef<HTMLVideoElement | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const gainNodeRef = useRef<GainNode | null>(null);
@@ -120,12 +123,29 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
   }, [isMuted, volume]);
 
   // Visualizer data collector (called 60fps inside visualizers)
-  const getAnalyserData = useCallback((freqArray: Uint8Array, timeArray: Uint8Array) => {
-    if (analyserRef.current) {
-      analyserRef.current.getByteFrequencyData(freqArray as unknown as Uint8Array<ArrayBuffer>);
-      analyserRef.current.getByteTimeDomainData(timeArray as unknown as Uint8Array<ArrayBuffer>);
-    }
-  }, []);
+  const getAnalyserData = useCallback(
+    (freqArray: Uint8Array, timeArray: Uint8Array) => {
+      if (analyserRef.current) {
+        analyserRef.current.getByteFrequencyData(freqArray as unknown as Uint8Array<ArrayBuffer>);
+        analyserRef.current.getByteTimeDomainData(timeArray as unknown as Uint8Array<ArrayBuffer>);
+      }
+
+      if (isPlaying) {
+        let sum = 0;
+        for (let i = 0; i < Math.min(16, freqArray.length); i++) sum += freqArray[i];
+        if (sum === 0) {
+          const now = performance.now() * 0.006;
+          for (let i = 0; i < freqArray.length; i++) {
+            const val = Math.sin(now + i * 0.28) * 0.5 + 0.5;
+            const bass = Math.max(0, 1 - i / 14);
+            freqArray[i] = Math.round(val * 170 * bass + 35);
+            timeArray[i] = Math.round(128 + Math.sin(now * 1.8 + i * 0.35) * 45);
+          }
+        }
+      }
+    },
+    [isPlaying]
+  );
 
   // Load stored tracks & settings on initial mount
   const refreshTracks = useCallback(async () => {
@@ -143,13 +163,25 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  // Initialize Audio Element ONCE on mount
+  // Initialize Media Element ONCE on mount (HTMLVideoElement plays both audio and video!)
   useEffect(() => {
-    const audio = new Audio();
+    const audio = document.createElement('video');
     audio.preload = 'metadata';
     audio.crossOrigin = 'anonymous';
+    audio.playsInline = true;
+    audio.setAttribute('playsinline', 'true');
+    audio.setAttribute('webkit-playsinline', 'true');
     audio.volume = 0.8;
+    audio.style.position = 'fixed';
+    audio.style.top = '-9999px';
+    audio.style.left = '-9999px';
+    audio.style.width = '2px';
+    audio.style.height = '2px';
+    audio.style.opacity = '0';
+    audio.style.pointerEvents = 'none';
+    document.body.appendChild(audio);
     audioRef.current = audio;
+    setMediaElement(audio);
 
     // Load initial settings
     dbManager.getSettings().then((settings) => {
@@ -185,7 +217,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     const handleError = () => {
       setIsLoadingTrack(false);
       setIsPlaying(false);
-      setAudioError('Failed to load audio source');
+      setAudioError('Failed to load media source');
     };
 
     audio.addEventListener('loadedmetadata', handleLoadedMetadata);
@@ -220,6 +252,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
         audioContextRef.current.close().catch(() => {});
       }
+      audio.remove();
     };
   }, [refreshTracks]); // Note: volume is deliberately excluded so volume changes never recreate audio!
 
@@ -252,6 +285,29 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
             sourceUrl = URL.createObjectURL(blob);
             activeBlobUrlRef.current = sourceUrl;
           }
+        }
+
+        if (!sourceUrl && track.youtubeId) {
+          audio.pause();
+          audio.removeAttribute('src');
+          audio.load();
+          setCurrentTrack(track);
+          setIsPlaying(true);
+          setCurrentTime(0);
+          setDuration(track.duration || 0);
+          setIsLoadingTrack(false);
+          const updatedPlayCount = (track.playCount || 0) + 1;
+          dbManager.updateTrack({ id: track.id, playCount: updatedPlayCount }).catch(() => {});
+          setAllTracks((prev) =>
+            prev.map((t) => (t.id === track.id ? { ...t, playCount: updatedPlayCount } : t))
+          );
+          if (newQueue) {
+            setQueue(newQueue);
+          } else {
+            setQueue((prev) => (prev.length === 0 ? allTracks : prev));
+          }
+          setHistory((prev) => [track, ...prev.filter((t) => t.id !== track.id).slice(0, 50)]);
+          return;
         }
 
         if (!sourceUrl) {
@@ -309,23 +365,39 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     }
 
     if (isPlaying) {
-      audio.pause();
+      if (currentTrack.youtubeId && !currentTrack.audioSrc) {
+        setIsPlaying(false);
+      } else {
+        audio.pause();
+      }
     } else {
-      try {
-        await audio.play();
-      } catch (err) {
-        console.error('Failed to resume playback:', err);
+      if (currentTrack.youtubeId && !currentTrack.audioSrc) {
+        setIsPlaying(true);
+      } else {
+        try {
+          await audio.play();
+        } catch (err) {
+          console.error('Failed to resume playback:', err);
+        }
       }
     }
   }, [currentTrack, allTracks, isPlaying, playTrack, initAudioEngine]);
 
   const pause = useCallback(() => {
+    if (currentTrack?.youtubeId && !currentTrack.audioSrc) {
+      setIsPlaying(false);
+      return;
+    }
     if (audioRef.current && isPlaying) {
       audioRef.current.pause();
     }
-  }, [isPlaying]);
+  }, [currentTrack, isPlaying]);
 
   const resume = useCallback(async () => {
+    if (currentTrack?.youtubeId && !currentTrack.audioSrc) {
+      setIsPlaying(true);
+      return;
+    }
     if (audioRef.current && !isPlaying) {
       initAudioEngine();
       if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
@@ -333,7 +405,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       }
       await audioRef.current.play();
     }
-  }, [isPlaying, initAudioEngine]);
+  }, [currentTrack, isPlaying, initAudioEngine]);
 
   const seek = useCallback((seconds: number) => {
     if (audioRef.current && isFinite(seconds)) {
@@ -560,6 +632,8 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
         loadDemoTracks,
         getAnalyserData,
         isAudioEngineReady,
+        mediaElement,
+        isVideo: !!currentTrack?.isVideo,
       }}
     >
       {children}

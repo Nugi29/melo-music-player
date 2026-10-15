@@ -4,7 +4,7 @@ import React from 'react';
 import { Track } from '@/types/music';
 import { useAudio } from '@/lib/audio/AudioEngine';
 import { formatDuration, padNumber } from '@/lib/utils/formatters';
-import { Play, Pause, Heart, Music, Trash2 } from 'lucide-react';
+import { Play, Pause, Heart, Music, Trash2, Film } from 'lucide-react';
 
 interface TrackTableProps {
   tracks: Track[];
@@ -65,7 +65,13 @@ export default function TrackTable({
 
                 {/* Track Title */}
                 <td className="py-2 px-2">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1.5">
+                    {track.isVideo && (
+                      <span className="px-1 py-0.5 border border-[var(--color-term-green)] bg-[var(--color-term-green)]/15 text-[var(--color-term-green)] text-[8px] font-bold flex items-center gap-0.5 shrink-0">
+                        <Film className="w-2.5 h-2.5" />
+                        <span>VIDEO</span>
+                      </span>
+                    )}
                     <span
                       className={`truncate ${
                         isCurrent

@@ -15,6 +15,7 @@ import {
   FolderOpen,
   FilterX,
   Volume2,
+  Film,
 } from 'lucide-react';
 
 interface MusicLibraryProps {
@@ -39,6 +40,7 @@ export default function MusicLibrary({
   const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
   const [viewMode, setViewMode] = useState<LibraryViewMode>('table');
   const [activeGenreFilter, setActiveGenreFilter] = useState<string>('ALL');
+  const [mediaTypeFilter, setMediaTypeFilter] = useState<'all' | 'audio' | 'video'>('all');
 
   // Compute unique genres in currently filtered set
   const genres = useMemo(() => {
@@ -68,6 +70,13 @@ export default function MusicLibrary({
     // Genre filter
     if (activeGenreFilter !== 'ALL') {
       result = result.filter((t) => t.genre.toLowerCase() === activeGenreFilter.toLowerCase());
+    }
+
+    // Media type filter
+    if (mediaTypeFilter === 'video') {
+      result = result.filter((t) => t.isVideo);
+    } else if (mediaTypeFilter === 'audio') {
+      result = result.filter((t) => !t.isVideo);
     }
 
     // Sorting
@@ -101,7 +110,7 @@ export default function MusicLibrary({
     });
 
     return result;
-  }, [tracks, searchQuery, activeGenreFilter, sortField, sortOrder]);
+  }, [tracks, searchQuery, activeGenreFilter, mediaTypeFilter, sortField, sortOrder]);
 
   const handleSortChange = (field: SortField) => {
     if (sortField === field) {
@@ -221,35 +230,72 @@ export default function MusicLibrary({
         </div>
       </div>
 
-      {/* 3. Genre Quick Pills */}
-      {genres.length > 0 && (
-        <div className="flex-none flex items-center gap-1 overflow-x-auto pb-1.5 mb-2 scrollbar-none text-[10px]">
-          <span className="text-[var(--color-term-dim)] mr-1">Filter:</span>
+      {/* 3. Media Type & Genre Quick Pills */}
+      <div className="flex-none flex items-center gap-1.5 overflow-x-auto pb-1.5 mb-2 scrollbar-none text-[10px]">
+        {/* Media type toggle pills */}
+        <div className="flex items-center gap-1 pr-2 border-r border-[var(--color-term-border)]">
           <button
-            onClick={() => setActiveGenreFilter('ALL')}
+            onClick={() => setMediaTypeFilter('all')}
             className={`px-1.5 py-0.5 border transition-colors ${
-              activeGenreFilter === 'ALL'
+              mediaTypeFilter === 'all'
                 ? 'border-[var(--color-term-green)] bg-[var(--color-term-green)]/20 text-[var(--color-term-green)] font-bold'
                 : 'border-[var(--color-term-border)] text-[var(--color-term-muted)] hover:text-[var(--color-term-cyan)]'
             }`}
           >
             ALL
           </button>
-          {genres.map((g) => (
+          <button
+            onClick={() => setMediaTypeFilter('audio')}
+            className={`px-1.5 py-0.5 border transition-colors ${
+              mediaTypeFilter === 'audio'
+                ? 'border-[var(--color-term-cyan)] bg-[var(--color-term-cyan)]/20 text-[var(--color-term-cyan)] font-bold'
+                : 'border-[var(--color-term-border)] text-[var(--color-term-muted)] hover:text-[var(--color-term-cyan)]'
+            }`}
+          >
+            SONGS
+          </button>
+          <button
+            onClick={() => setMediaTypeFilter('video')}
+            className={`px-1.5 py-0.5 border flex items-center gap-1 transition-colors ${
+              mediaTypeFilter === 'video'
+                ? 'border-[var(--color-term-green)] bg-[var(--color-term-green)]/25 text-[var(--color-term-green)] font-bold shadow-[0_0_6px_rgba(0,255,136,0.3)]'
+                : 'border-[var(--color-term-border)] text-[var(--color-term-muted)] hover:text-[var(--color-term-green)]'
+            }`}
+          >
+            <Film className="w-2.5 h-2.5" />
+            <span>VIDEOS (ASCII)</span>
+          </button>
+        </div>
+
+        {genres.length > 0 && (
+          <>
+            <span className="text-[var(--color-term-dim)] mr-0.5">Genre:</span>
             <button
-              key={g}
-              onClick={() => setActiveGenreFilter(g)}
-              className={`px-1.5 py-0.5 border whitespace-nowrap transition-colors ${
-                activeGenreFilter.toLowerCase() === g.toLowerCase()
+              onClick={() => setActiveGenreFilter('ALL')}
+              className={`px-1.5 py-0.5 border transition-colors ${
+                activeGenreFilter === 'ALL'
                   ? 'border-[var(--color-term-green)] bg-[var(--color-term-green)]/20 text-[var(--color-term-green)] font-bold'
                   : 'border-[var(--color-term-border)] text-[var(--color-term-muted)] hover:text-[var(--color-term-cyan)]'
               }`}
             >
-              {g}
+              ALL
             </button>
-          ))}
-        </div>
-      )}
+            {genres.map((g) => (
+              <button
+                key={g}
+                onClick={() => setActiveGenreFilter(g)}
+                className={`px-1.5 py-0.5 border transition-colors ${
+                  activeGenreFilter === g
+                    ? 'border-[var(--color-term-cyan)] bg-[var(--color-term-cyan)]/20 text-[var(--color-term-cyan)] font-bold'
+                    : 'border-[var(--color-term-border)] text-[var(--color-term-muted)] hover:text-[var(--color-term-cyan)]'
+                }`}
+              >
+                {g}
+              </button>
+            ))}
+          </>
+        )}
+      </div>
 
       {/* 4. Main Track Display or Empty State */}
       <div className="flex-1 overflow-y-auto min-h-0 pr-1">
@@ -292,11 +338,11 @@ export default function MusicLibrary({
             <FolderOpen className="w-12 h-12 text-[var(--color-term-green)] animate-pulse" />
             <div>
               <p className="text-sm font-bold text-[var(--color-term-cyan)] neon-text-glow">
-                Terminal Music Library Empty
+                Terminal Media Library Ready
               </p>
-              <p className="text-xs text-[var(--color-term-dim)] mt-1 max-w-sm">
-                No audio tracks imported into browser storage. Ingest your local MP3/WAV/FLAC files
-                or preload cyber demo tracks to test audio & visualizer immediately.
+              <p className="text-xs text-[var(--color-term-dim)] mt-1 max-w-md">
+                Drag and drop songs, video files (MP4, WebM), or entire directories anywhere on the screen!
+                Videos play automatically with real-time ASCII art video decoding.
               </p>
             </div>
             <div className="flex items-center gap-3 pt-2">
@@ -305,14 +351,14 @@ export default function MusicLibrary({
                 className="flex items-center gap-1.5 px-3 py-1.5 border border-[var(--color-term-green)] bg-[var(--color-term-green)]/15 text-[var(--color-term-green)] hover:bg-[var(--color-term-green)]/25 font-bold text-xs"
               >
                 <Upload className="w-3.5 h-3.5" />
-                <span>Import Local Audio</span>
+                <span>Import Songs / Videos / Folders</span>
               </button>
               <button
                 onClick={loadDemoTracks}
                 className="flex items-center gap-1.5 px-3 py-1.5 border border-[var(--color-term-cyan)] text-[var(--color-term-cyan)] hover:bg-[var(--color-term-cyan)]/10 text-xs"
               >
                 <Sparkles className="w-3.5 h-3.5" />
-                <span>Preload Demo Tracks</span>
+                <span>Preload Demo Tracks & Video</span>
               </button>
             </div>
           </div>

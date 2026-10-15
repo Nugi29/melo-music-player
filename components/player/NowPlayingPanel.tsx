@@ -5,6 +5,7 @@ import { useAudio } from '@/lib/audio/AudioEngine';
 import { formatDuration } from '@/lib/utils/formatters';
 import { getRandomAsciiArt } from '@/lib/utils/asciiArt';
 import ASCIIVisualizer from '@/components/visualizer/ASCIIVisualizer';
+import ASCIIVideoPlayer from '@/components/visualizer/ASCIIVideoPlayer';
 import { VisualizerMode } from '@/types/settings';
 import {
   Play,
@@ -19,11 +20,15 @@ import {
   Heart,
   Music,
   Radio,
+  Film,
+  Maximize2,
+  Tv,
 } from 'lucide-react';
 
 interface NowPlayingPanelProps {
   visualizerMode: VisualizerMode;
   onVisualizerModeChange: (mode: VisualizerMode) => void;
+  onOpenCinema?: () => void;
   className?: string;
 }
 
@@ -107,6 +112,7 @@ function GraphicSpectrumBars() {
 export default function NowPlayingPanel({
   visualizerMode,
   onVisualizerModeChange,
+  onOpenCinema,
   className = '',
 }: NowPlayingPanelProps) {
   const {
@@ -128,10 +134,12 @@ export default function NowPlayingPanel({
     toggleRepeat,
     toggleLike,
     isLoadingTrack,
+    isVideo,
   } = useAudio();
 
   const [isSeeking, setIsSeeking] = useState<boolean>(false);
   const [seekPreviewTime, setSeekPreviewTime] = useState<number>(0);
+  const [videoDisplayMode, setVideoDisplayMode] = useState<'ascii-video' | 'spectrum'>('ascii-video');
 
   // Handle Seek Bar Click / Drag
   const handleSeekChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -166,6 +174,12 @@ export default function NowPlayingPanel({
             )}
             {isPlaying && (
               <span className="absolute bottom-1 right-1 w-2 h-2 bg-[var(--color-term-green)] rounded-full animate-ping" />
+            )}
+            {currentTrack?.isVideo && (
+              <span className="absolute top-1 left-1 px-1 py-0.5 bg-[var(--color-term-green)] text-black text-[8px] font-bold tracking-wider flex items-center gap-0.5">
+                <Film className="w-2.5 h-2.5" />
+                <span>VIDEO</span>
+              </span>
             )}
           </div>
 
@@ -227,14 +241,59 @@ export default function NowPlayingPanel({
           <GraphicSpectrumBars />
         </div>
 
-        {/* Real-time sound-reactive ASCII Visualizer */}
+        {/* Real-time sound-reactive ASCII Visualizer or Live ASCII Video Player */}
         <div className="pt-2 border-t border-[var(--color-term-border)]">
-          <ASCIIVisualizer
-            mode={visualizerMode}
-            onModeChange={onVisualizerModeChange}
-            height={8}
-            width={34}
-          />
+          {currentTrack?.isVideo ? (
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between text-[10px]">
+                <div className="flex items-center gap-1.5 text-[var(--color-term-green)] font-bold">
+                  <Film className="w-3 h-3 animate-pulse" />
+                  <span>ASCII VIDEO PLAYBACK</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() =>
+                      setVideoDisplayMode((prev) =>
+                        prev === 'ascii-video' ? 'spectrum' : 'ascii-video'
+                      )
+                    }
+                    className="px-1.5 py-0.5 border border-[var(--color-term-border)] hover:border-[var(--color-term-cyan)] text-[var(--color-term-cyan)] text-[9px]"
+                  >
+                    {videoDisplayMode === 'ascii-video' ? 'EQ VIEW' : 'ASCII VIEW'}
+                  </button>
+                  {onOpenCinema && (
+                    <button
+                      onClick={onOpenCinema}
+                      className="px-1.5 py-0.5 border border-[var(--color-term-green)] text-[var(--color-term-green)] hover:bg-[var(--color-term-green)]/15 font-bold text-[9px] flex items-center gap-1"
+                    >
+                      <Maximize2 className="w-2.5 h-2.5" />
+                      <span>CINEMA</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {videoDisplayMode === 'ascii-video' ? (
+                <div className="h-44 w-full">
+                  <ASCIIVideoPlayer onOpenCinema={onOpenCinema} />
+                </div>
+              ) : (
+                <ASCIIVisualizer
+                  mode={visualizerMode}
+                  onModeChange={onVisualizerModeChange}
+                  height={8}
+                  width={34}
+                />
+              )}
+            </div>
+          ) : (
+            <ASCIIVisualizer
+              mode={visualizerMode}
+              onModeChange={onVisualizerModeChange}
+              height={8}
+              width={34}
+            />
+          )}
         </div>
       </div>
 

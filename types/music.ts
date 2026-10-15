@@ -16,10 +16,14 @@ export interface Track {
   source: 'local' | 'demo';
   sizeBytes?: number;
   mimeType?: string;
+  isVideo?: boolean;
+  videoWidth?: number;
+  videoHeight?: number;
+  youtubeId?: string;
 }
 
 export type SortField = 'trackNumber' | 'title' | 'artist' | 'album' | 'duration' | 'dateAdded' | 'playCount';
 export type SortOrder = 'asc' | 'desc';
 
 export type LibraryViewMode = 'table' | 'grid';
-export type ActiveSection = 'all' | 'liked' | 'recent' | 'most-played' | 'genre' | 'playlist' | 'folders';
+export type ActiveSection = 'all' | 'liked' | 'recent' | 'most-played' | 'genre' | 'playlist' | 'folders' | 'videos';

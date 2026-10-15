@@ -42,10 +42,6 @@ export default function TopBar({
           MELO_OS
         </span>
         <span className="text-[var(--color-term-dim)] text-[11px]">v1.0.0</span>
-        <span className="text-[var(--color-term-border)] mx-1 font-bold">//</span>
-        <span className="text-[var(--color-term-cyan)] font-semibold tracking-wider hidden sm:inline">
-          NUGI MUSIC LIBRARY
-        </span>
       </div>
 
       {/* Center: System Status & Real-time Clock */}

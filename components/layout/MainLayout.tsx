@@ -16,6 +16,8 @@ import ImportDropzone from '../library/ImportDropzone';
 import SettingsModal from '../modals/SettingsModal';
 import PlaylistModal from '../modals/PlaylistModal';
 import ShortcutsModal from '../modals/ShortcutsModal';
+import GlobalDropOverlay from '../library/GlobalDropOverlay';
+import ASCIICinemaModal from '../modals/ASCIICinemaModal';
 import { CommandContext } from '../terminal/commandParser';
 import { X, Layers } from 'lucide-react';
 
@@ -40,6 +42,7 @@ export default function MainLayout() {
     setRepeatMode,
     toggleLike,
     refreshTracks,
+    addTracks,
   } = useAudio();
 
   // Settings State
@@ -58,6 +61,7 @@ export default function MainLayout() {
   const [isPlaylistsModalOpen, setIsPlaylistsModalOpen] = useState<boolean>(false);
   const [isShortcutsOpen, setIsShortcutsOpen] = useState<boolean>(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState<boolean>(false);
+  const [isCinemaOpen, setIsCinemaOpen] = useState<boolean>(false);
   const [isTerminalMinimized, setIsTerminalMinimized] = useState<boolean>(false);
 
   // Mobile Views
@@ -128,6 +132,8 @@ export default function MainLayout() {
         if (!pl) return allTracks;
         return allTracks.filter((t) => pl.trackIds.includes(t.id));
       }
+      case 'videos':
+        return allTracks.filter((t) => t.isVideo);
       case 'folders':
         return allTracks.filter((t) => t.source === 'local');
       case 'all':
@@ -150,6 +156,8 @@ export default function MainLayout() {
         const pl = playlists.find((p) => p.id === selectedPlaylistId);
         return pl ? `Playlist: ${pl.name}` : 'Playlists';
       }
+      case 'videos':
+        return 'Videos Library [ASCII Playback Engine]';
       case 'folders':
         return 'Local Files Directory';
       case 'all':
@@ -257,6 +265,9 @@ export default function MainLayout() {
       },
       clearHistory: () => {},
       minimizeTerminal: () => setIsTerminalMinimized((prev) => !prev),
+      openCinema: () => setIsCinemaOpen(true),
+      openImport: () => setIsImportModalOpen(true),
+      addTracks,
     }),
     [
       allTracks,
@@ -277,6 +288,7 @@ export default function MainLayout() {
       setRepeatMode,
       toggleLike,
       refreshTracks,
+      addTracks,
       updateSettings,
       handleCreatePlaylist,
       handlePlayPlaylist,
@@ -388,6 +400,7 @@ export default function MainLayout() {
           totalTracksCount={allTracks.length}
           likedTracksCount={allTracks.filter((t) => t.isLiked).length}
           recentTracksCount={history.length}
+          videoTracksCount={allTracks.filter((t) => t.isVideo).length}
           onOpenImport={() => setIsImportModalOpen(true)}
           onOpenCreatePlaylist={() => setIsPlaylistsModalOpen(true)}
           className="hidden md:flex md:col-span-3 lg:col-span-2 min-h-0"
@@ -419,6 +432,7 @@ export default function MainLayout() {
         <NowPlayingPanel
           visualizerMode={settings.visualizerMode}
           onVisualizerModeChange={(mode) => updateSettings({ visualizerMode: mode })}
+          onOpenCinema={() => setIsCinemaOpen(true)}
           className="hidden lg:flex lg:col-span-3 min-h-0"
         />
       </main>
@@ -445,6 +459,10 @@ export default function MainLayout() {
             <NowPlayingPanel
               visualizerMode={settings.visualizerMode}
               onVisualizerModeChange={(mode) => updateSettings({ visualizerMode: mode })}
+              onOpenCinema={() => {
+                setIsMobilePlayerOpen(false);
+                setIsCinemaOpen(true);
+              }}
               className="h-full border-none p-0"
             />
           </div>
@@ -514,6 +532,14 @@ export default function MainLayout() {
       {/* Keyboard Shortcuts Help Modal */}
       {isShortcutsOpen && (
         <ShortcutsModal onClose={() => setIsShortcutsOpen(false)} />
+      )}
+
+      {/* Global Anywhere Window Drag & Drop Overlay */}
+      <GlobalDropOverlay onOpenCinema={() => setIsCinemaOpen(true)} />
+
+      {/* Full Screen ASCII Video Cinema Theater */}
+      {isCinemaOpen && (
+        <ASCIICinemaModal onClose={() => setIsCinemaOpen(false)} />
       )}
     </div>
   );

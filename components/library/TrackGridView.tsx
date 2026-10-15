@@ -5,7 +5,7 @@ import { Track } from '@/types/music';
 import { useAudio } from '@/lib/audio/AudioEngine';
 import { formatDuration } from '@/lib/utils/formatters';
 import { getRandomAsciiArt } from '@/lib/utils/asciiArt';
-import { Play, Pause, Heart, Radio } from 'lucide-react';
+import { Play, Pause, Heart, Radio, Film } from 'lucide-react';
 
 interface TrackGridViewProps {
   tracks: Track[];
@@ -62,6 +62,13 @@ export default function TrackGridView({ tracks, onPlayTrack }: TrackGridViewProp
               {isCurrent && (
                 <span className="absolute top-1 left-1 px-1 py-0.5 bg-[var(--color-term-green)] text-black text-[9px] font-bold">
                   PLAYING
+                </span>
+              )}
+
+              {track.isVideo && (
+                <span className="absolute top-1 right-1 px-1 py-0.5 bg-[var(--color-term-cyan)] text-black text-[8px] font-bold tracking-wider flex items-center gap-0.5 shadow-[0_0_6px_rgba(0,217,255,0.6)]">
+                  <Film className="w-2.5 h-2.5" />
+                  <span>VIDEO</span>
                 </span>
               )}
             </div>

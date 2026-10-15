@@ -14,6 +14,7 @@ import {
   Layers,
   Music2,
   FolderTree,
+  Film,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -28,6 +29,7 @@ interface SidebarProps {
   totalTracksCount: number;
   likedTracksCount: number;
   recentTracksCount: number;
+  videoTracksCount?: number;
   onOpenImport: () => void;
   onOpenCreatePlaylist: () => void;
   className?: string;
@@ -45,6 +47,7 @@ export default function Sidebar({
   totalTracksCount,
   likedTracksCount,
   recentTracksCount,
+  videoTracksCount = 0,
   onOpenImport,
   onOpenCreatePlaylist,
   className = '',
@@ -54,13 +57,13 @@ export default function Sidebar({
       className={`border border-[var(--color-term-border)] bg-[var(--color-term-surface)] flex flex-col justify-between font-mono text-xs select-none ${className}`}
     >
       <div className="p-2 space-y-4 overflow-y-auto">
-        {/* Quick Action: Import Music */}
+        {/* Quick Action: Import Music & Videos */}
         <button
           onClick={onOpenImport}
           className="w-full flex items-center justify-center gap-1.5 px-2.5 py-1.5 border border-[var(--color-term-green)] bg-[var(--color-term-green)]/10 text-[var(--color-term-green)] hover:bg-[var(--color-term-green)]/20 transition-all font-bold text-xs shadow-[0_0_8px_rgba(0,255,136,0.15)]"
         >
           <Upload className="w-3.5 h-3.5" />
-          <span>IMPORT LOCAL AUDIO</span>
+          <span>IMPORT SONGS & VIDEOS</span>
         </button>
 
         {/* Primary Library Navigation */}
@@ -84,6 +87,24 @@ export default function Sidebar({
               </span>
               <span className="text-[10px] px-1 bg-[#011e1e] text-[var(--color-term-cyan)]">
                 {totalTracksCount}
+              </span>
+            </li>
+
+            {/* Videos (ASCII Playback) */}
+            <li
+              onClick={() => onSelectSection('videos')}
+              className={`flex items-center justify-between px-2 py-1 cursor-pointer transition-colors ${
+                activeSection === 'videos'
+                  ? 'bg-[var(--color-term-border)]/50 text-[var(--color-term-green)] font-bold border-l-2 border-[var(--color-term-green)]'
+                  : 'hover:bg-[#011a1a] hover:text-[var(--color-term-cyan)]'
+              }`}
+            >
+              <span className="flex items-center gap-2 truncate">
+                <Film className="w-3.5 h-3.5 text-[var(--color-term-cyan)]" />
+                <span>Videos (ASCII)</span>
+              </span>
+              <span className="text-[10px] px-1 bg-[#011e1e] text-[var(--color-term-green)] font-semibold">
+                {videoTracksCount}
               </span>
             </li>
 

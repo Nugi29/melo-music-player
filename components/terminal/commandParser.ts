@@ -32,6 +32,9 @@ export interface CommandContext {
   playPlaylist: (name: string) => Promise<boolean>;
   clearHistory: () => void;
   minimizeTerminal?: () => void;
+  openCinema?: () => void;
+  openImport?: () => void;
+  addTracks?: (tracks: Track[]) => Promise<void>;
 }
 
 export interface CommandResult {
@@ -59,8 +62,109 @@ export const AVAILABLE_COMMANDS = [
   'history',
   'status',
   'theme',
+  'cinema',
+  'video',
+  'youtube',
+  'import',
   'exit',
 ];
+
+function extractYouTubeId(input: string): string | null {
+  const match = input.match(
+    /(?:youtube\.com\/(?:watch\?.*v=|embed\/|v\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/i
+  );
+  if (match) return match[1];
+  if (/^[a-zA-Z0-9_-]{11}$/.test(input.trim()) && !input.includes(' ')) {
+    return input.trim();
+  }
+  return null;
+}
+
+async function resolveAndPlayYouTube(
+  targetUrlOrId: string,
+  context: CommandContext
+): Promise<CommandResult> {
+  try {
+    const res = await fetch(`/api/youtube?url=${encodeURIComponent(targetUrlOrId)}`);
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      return {
+        output: `[YOUTUBE ERROR] ${errData.error || 'Failed to resolve YouTube stream.'}`,
+        type: 'error',
+      };
+    }
+
+    const data = await res.json();
+    if (!data.videoId && !data.title) {
+      return {
+        output: `[YOUTUBE ERROR] Video could not be resolved for: ${targetUrlOrId}`,
+        type: 'error',
+      };
+    }
+
+    const videoId = data.videoId || extractYouTubeId(targetUrlOrId) || String(Date.now());
+    const isDirect = Boolean(data.streamUrl);
+
+    const ytTrack: Track = {
+      id: `yt_${videoId}`,
+      youtubeId: videoId,
+      title: data.title || 'YouTube Video',
+      artist: data.artist || 'YouTube Stream',
+      album: 'YouTube Stream',
+      duration: data.duration || 0,
+      genre: 'YouTube Video',
+      pictureUrl: data.thumbnailUrl || `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`,
+      audioSrc: data.streamUrl || undefined,
+      dateAdded: Date.now(),
+      playCount: 1,
+      isLiked: false,
+      source: 'demo',
+      isVideo: true,
+      videoWidth: 1280,
+      videoHeight: 720,
+    };
+
+    // Save to IndexedDB
+    try {
+      const { dbManager } = await import('@/lib/database/indexedDb');
+      await dbManager.saveTrack(ytTrack);
+    } catch (e) {
+      console.warn('Could not cache YouTube track to IndexedDB:', e);
+    }
+
+    if (context.addTracks) {
+      await context.addTracks([ytTrack]);
+    }
+    await context.refreshTracks();
+    await context.playTrack(ytTrack);
+
+    // Auto-open cinema if available for full immersion
+    if (context.openCinema) {
+      context.openCinema();
+    }
+
+    return {
+      output: [
+        '╔═══════════════════════════════════════════════════════════════╗',
+        '║             YOUTUBE ASCII VIDEO STREAM CONNECTED              ║',
+        '╚═══════════════════════════════════════════════════════════════╝',
+        `TITLE    : ${data.title || ytTrack.title}`,
+        `ARTIST   : ${data.artist || ytTrack.artist}`,
+        `DURATION : ${formatDuration(data.duration || ytTrack.duration)}`,
+        `MODE     : ${isDirect ? 'DIRECT ASCII CANVAS STREAM' : 'CRT RETRO VIDEO & ASCII MATRIX THEATER'}`,
+        'SETTINGS : CYBER CHARSET • TRUECOLOR RGB • ULTRA RES • PULSE OFF',
+        'DECODER  : REAL-TIME ASCII VIDEO ENGINE ONLINE (60 FPS)',
+      ].join('\n'),
+      type: 'success',
+    };
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : 'Unknown error';
+    return {
+      output: `[YOUTUBE ERROR] Connection failed: ${msg}`,
+      type: 'error',
+    };
+  }
+}
 
 export async function parseAndExecuteCommand(
   rawInput: string,
@@ -105,7 +209,8 @@ export async function parseAndExecuteCommand(
           '  ls               - List imported audio tracks in library',
           '  scan             - Rescan local library storage',
           '  search <query>   - Search tracks by title, artist, or album',
-          '  play <num|title> - Play track by library number or keyword',
+          '  play <num|title|url> - Play track or stream YouTube video directly',
+          '  youtube <url>    - Stream YouTube video with live ASCII playback',
           '  pause            - Pause current playback',
           '  resume           - Resume audio playback',
           '  next             - Skip to the next track',
@@ -116,6 +221,7 @@ export async function parseAndExecuteCommand(
           '  playlist [sub]   - Manage playlists (list, create, play)',
           '  like             - Toggle favorite status for active track',
           '  visualizer <mode>- Set ASCII mode (eq, wave, spec, matrix, pulse)',
+          '  cinema           - Open full-screen ASCII Video Cinema',
           '  status           - View system status, playback & engine info',
           '  theme <name>     - Switch color theme (green, cyan, amber, magenta)',
           '  clear            - Clear terminal screen output',
@@ -192,7 +298,14 @@ export async function parseAndExecuteCommand(
         return { output: 'Error: No track specified and library is empty.', type: 'error' };
       }
 
-      const query = args.join(' ');
+      const query = args.join(' ').trim();
+
+      // Check if YouTube URL or video ID
+      const ytId = extractYouTubeId(query);
+      if (ytId) {
+        return await resolveAndPlayYouTube(query, context);
+      }
+
       // Check if number
       const trackNum = parseInt(query, 10);
       if (!isNaN(trackNum) && trackNum >= 1 && trackNum <= context.allTracks.length) {
@@ -218,7 +331,17 @@ export async function parseAndExecuteCommand(
         };
       }
 
-      return { output: `Error: Track "${query}" not found in library.`, type: 'error' };
+      return { output: `Error: Track "${query}" not found in library. (To stream YouTube: play https://www.youtube.com/watch?v=...)`, type: 'error' };
+    }
+
+    case 'youtube': {
+      if (args.length === 0) {
+        return {
+          output: 'Usage: youtube <url | video_id>\nExample: youtube https://www.youtube.com/watch?v=iIm4gcybpsI',
+          type: 'error',
+        };
+      }
+      return await resolveAndPlayYouTube(args.join(' ').trim(), context);
     }
 
     case 'pause': {
@@ -378,6 +501,29 @@ export async function parseAndExecuteCommand(
     case 'clear': {
       context.clearHistory();
       return { output: '', type: 'output' };
+    }
+
+    case 'cinema':
+    case 'video': {
+      if (context.openCinema) {
+        context.openCinema();
+        return {
+          output: '[ASCII CINEMA ACTIVATED] Launching full-screen CRT ASCII Video Theater...',
+          type: 'success',
+        };
+      }
+      return { output: 'Cinema module unavailable', type: 'error' };
+    }
+
+    case 'import': {
+      if (context.openImport) {
+        context.openImport();
+        return {
+          output: '[INGEST ENGINE] Opening media import dropzone...',
+          type: 'success',
+        };
+      }
+      return { output: 'Import module unavailable', type: 'error' };
     }
 
     case 'exit': {
