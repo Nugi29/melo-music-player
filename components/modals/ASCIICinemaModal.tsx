@@ -50,6 +50,9 @@ export default function ASCIICinemaModal({ onClose }: ASCIICinemaModalProps) {
             <span className="text-[10px] px-1.5 py-0.5 border border-[var(--color-term-border)] bg-[#010a0a] text-[var(--color-term-cyan)]">
               CRT MATRIX 60HZ
             </span>
+            <span className="text-[10px] px-1.5 py-0.5 border border-[var(--color-term-green)]/40 bg-[var(--color-term-green)]/10 text-[var(--color-term-green)] hidden sm:inline font-bold">
+              PRO DENSITY 220C
+            </span>
           </div>
 
           {/* Currently playing video title */}

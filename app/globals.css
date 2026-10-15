@@ -2,16 +2,20 @@
 
 @layer base {
   :root {
-    --color-term-bg: #030605;
-    --color-term-surface: #07100C;
-    --color-term-border: #124B35;
-    --color-term-green: #00FF88;
-    --color-term-cyan: #00D9FF;
-    --color-term-text: #D5FFE8;
-    --color-term-muted: #79A992;
-    --color-term-dim: #145338;
-    --color-term-error: #FF5555;
-    --color-term-warning: #FFD166;
+    --color-term-bg: #030707;
+    --color-term-surface: #020d0d;
+    --color-term-border: #005b5b;
+    --color-term-border-bright: #00ff88;
+    --color-term-green: #00ff88;
+    --color-term-cyan: #00f3ff;
+    --color-term-text: #38e8d8;
+    --color-term-muted: #1f7d75;
+    --color-term-dim: #186464;
+    --color-term-dimmer: #0e3a3a;
+    --color-term-error: #ff5555;
+    --color-term-warning: #ffd166;
+    --color-term-glow: rgba(0, 255, 136, 0.4);
+    --color-term-accent: #00ff88;
   }
 
   body {
@@ -22,17 +26,26 @@
   }
 }
 
-/* Neon text & box glow utilities */
+/* Neon text & box glow utilities that adapt dynamically to active theme */
 .neon-text-glow {
-  text-shadow: 0 0 6px rgba(0, 243, 255, 0.75), 0 0 12px rgba(0, 243, 255, 0.35);
+  text-shadow: 0 0 6px var(--color-term-cyan), 0 0 12px var(--color-term-glow);
 }
 
 .neon-green-glow {
-  text-shadow: 0 0 6px rgba(0, 255, 136, 0.8), 0 0 14px rgba(0, 255, 136, 0.4);
+  text-shadow: 0 0 6px var(--color-term-green), 0 0 14px var(--color-term-glow);
 }
 
 .neon-box-glow {
-  box-shadow: 0 0 12px rgba(0, 243, 255, 0.2), inset 0 0 8px rgba(0, 243, 255, 0.08);
+  box-shadow: 0 0 10px var(--color-term-glow), inset 0 0 8px var(--color-term-glow);
+}
+
+.neon-green-box {
+  box-shadow: 0 0 8px var(--color-term-glow), inset 0 0 6px var(--color-term-glow);
+}
+
+/* Screen glow mode when enabled in preferences */
+.glow-mode {
+  filter: drop-shadow(0 0 1px var(--color-term-glow));
 }
 
 /* CRT monitor scanlines effect overlay */
@@ -62,7 +75,7 @@
 }
 
 ::-webkit-scrollbar-track {
-  background: #020d0d;
+  background: var(--color-term-surface);
 }
 
 ::-webkit-scrollbar-thumb {
@@ -72,3 +85,13 @@
 ::-webkit-scrollbar-thumb:hover {
   background: var(--color-term-green);
 }
+
+/* Hide Next.js Dev Indicator badge & portal */
+nextjs-portal,
+[data-nextjs-dev-indicator],
+[data-nextjs-toast],
+svg:has([id*="next_logo"]),
+svg:has(path.paused) {
+  display: none !important;
+}
+

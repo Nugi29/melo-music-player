@@ -22,7 +22,7 @@ import {
 
 export type AsciiCharSet = 'retro' | 'matrix' | 'blocks' | 'detailed' | 'cyber';
 export type AsciiColorMode = 'truecolor' | 'theme' | 'matrix' | 'invert';
-export type AsciiResolution = 'retro' | 'standard' | 'high' | 'ultra';
+export type AsciiResolution = 'retro' | 'standard' | 'high' | 'ultra' | 'pro';
 export type AsciiViewMode = 'ascii' | 'pip' | 'split';
 
 interface ASCIIVideoPlayerProps {
@@ -47,6 +47,7 @@ const RESOLUTION_COLS: Record<AsciiResolution, { compact: number; cinema: number
   standard: { compact: 60, cinema: 96 },
   high: { compact: 84, cinema: 130 },
   ultra: { compact: 104, cinema: 170 },
+  pro: { compact: 136, cinema: 220 },
 };
 
 export default function ASCIIVideoPlayer({
@@ -571,17 +572,22 @@ export default function ASCIIVideoPlayer({
             {/* Resolution Selector */}
             <div className="flex items-center gap-1.5">
               <span className="text-[var(--color-term-dim)] font-semibold">DENSITY:</span>
-              {(['retro', 'standard', 'high', 'ultra'] as AsciiResolution[]).map((res) => (
+              {(['retro', 'standard', 'high', 'ultra', 'pro'] as AsciiResolution[]).map((res) => (
                 <button
                   key={res}
                   onClick={() => setResolution(res)}
-                  className={`px-1.5 py-0.5 border text-[9px] uppercase transition-colors ${
+                  className={`px-1.5 py-0.5 border text-[9px] uppercase transition-colors cursor-pointer ${
                     resolution === res
                       ? 'border-[var(--color-term-green)] bg-[var(--color-term-green)]/15 text-[var(--color-term-green)] font-bold'
                       : 'border-[var(--color-term-border)] text-[var(--color-term-muted)] hover:text-[var(--color-term-cyan)]'
                   }`}
+                  title={
+                    res === 'pro'
+                      ? 'PRO DENSITY: Ultra-fine 220-column Holo Cinema Matrix'
+                      : `${res} density profile`
+                  }
                 >
-                  {res}
+                  {res === 'pro' ? 'PRO DENSITY' : res}
                 </button>
               ))}
             </div>
